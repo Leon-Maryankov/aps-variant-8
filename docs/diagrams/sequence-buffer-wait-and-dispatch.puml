@@ -1,0 +1,49 @@
+@startuml
+ title Краевой сценарий — постановка, ожидание и выборка из буфера
+ hide footbox
+ autonumber
+ participant "Календарь событий" as Calendar
+ control "Ядро модели" as Engine
+ participant "Источник ИБ / ИЗ2" as Source
+ control "ДП" as Admission
+ queue "Общий FIFO-буфер Д1ОЗ2" as Buffer
+ control "Диспетчер выбора ДВ" as Scheduler
+ control "Пул приборов / указатель Д2П2" as Pool
+ participant "Распределительный центр" as Center
+ participant "Статистика" as Stats
+
+ Calendar -> Engine: OrderGenerated(sourceId, t)
+ Engine -> Source: createOrder(t)
+ Source --> Engine: order
+ Engine -> Source: sampleInterArrival() [ИЗ2]
+ Source --> Engine: Δt ~ U(Tmin,Tmax)
+ Engine -> Calendar: scheduleArrival(sourceId, t + Δt)
+ Engine -> Admission: onOrderGenerated(order)
+ Admission -> Buffer: enqueueTail(order) [Д1ОЗ2]
+ Buffer --> Admission: stored
+ Admission --> Engine: accepted
+ Engine -> Scheduler: onOrderAccepted(order.id, t)
+ Scheduler -> Pool: findNextFreeFromPointer() [Д2П2]
+ Pool --> Scheduler: NONE — все приборы заняты
+ Scheduler -> Scheduler: Не извлекать заявку; ожидать
+ ... время ожидания в очереди ...
+ Calendar -> Engine: ServiceCompleted(currentOrder, tEnd)
+ Engine -> Center: finishService(tEnd)
+ Center --> Engine: completedOrder + released
+ Engine -> Stats: recordServiceCompleted(completedOrder)
+ Engine -> Scheduler: onDeviceReleased(centerId, tEnd)
+ Scheduler -> Pool: findNextFreeFromPointer() [Д2П2]
+ Pool --> Scheduler: свободный центр
+ Scheduler -> Buffer: getWaitingOrders()
+ Buffer --> Scheduler: список заявок
+ Scheduler -> Scheduler: выбрать источник с максимальным приоритетом;\nсреди равных — самую раннюю [Д2Б4 + tie-break FIFO]
+ Scheduler -> Buffer: remove(selectedOrder)
+ Buffer --> Scheduler: selectedOrder
+ Scheduler -> Pool: markAssigned(center)
+ Pool -> Center: startService(selectedOrder, tEnd)
+ Pool -> Pool: сдвинуть указатель на позицию после центра
+ Center --> Pool: ServiceStarted
+ Pool --> Scheduler: AssignmentConfirmed
+ Scheduler -> Stats: recordServiceStarted; записать Twait
+ Scheduler -> Calendar: schedule ServiceCompleted по ПЗ1
+@enduml
