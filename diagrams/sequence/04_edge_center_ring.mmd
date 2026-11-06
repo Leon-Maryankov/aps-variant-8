@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    participant DV as Диспетчер выбора
+    participant C1 as Центр 1
+    participant C2 as Центр 2
+    participant C3 as Центр 3
+    participant C4 as Центр 4
+
+    Note over DV: Д2П2 - перебор по кольцу.<br/>N = 4, указатель = 3.<br/>Состояние: 1 свободен, 2 занят, 3 занят, 4 занят
+    DV->>C3: isFree()
+    C3-->>DV: false
+    DV->>C4: isFree()
+    C4-->>DV: false
+    DV->>C1: isFree()
+    Note over C4,C1: переход через конец списка: после 4 идёт 1
+    C1-->>DV: true
+    DV->>C1: start(заказ)
+    C1-->>DV: время окончания
+    Note over DV: указатель = 1 + 1 = 2<br/>следующий поиск начнётся с центра 2
+    opt все центры заняты
+        DV->>DV: поиск вернул null, заказ остаётся в очереди
+    end

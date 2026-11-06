@@ -1,0 +1,123 @@
+classDiagram
+    direction LR
+
+    class SimulationEngine {
+        -double now
+        -EventCalendar calendar
+        -List~Source~ sources
+        -OrderIntakeDispatcher intake
+        -OrderSelectionDispatcher selection
+        -StatsCollector stats
+        +step()
+        +runAuto()
+        -onOrderGenerated(Source s)
+        -onCenterFinished(DistributionCenter c)
+    }
+    class EventCalendar {
+        -PriorityQueue~Event~ events
+        +schedule(Event e)
+        +pollNext() Event
+        +isEmpty() bool
+    }
+    class Event {
+        -EventType type
+        -double time
+        -Object payload
+        +getType() EventType
+        +getTime() double
+    }
+    class Source {
+        -int sourceId
+        -double a
+        -double b
+        -Random rng
+        +nextInterval() double
+        +generate(double now) Order
+    }
+    class Order {
+        -int id
+        -int sourceId
+        -string cart
+        -double createdAt
+        -double serviceStart
+        -double serviceEnd
+        +getPriority() int
+        +markServiceStart(double t)
+        +markServiceEnd(double t)
+        +waitTime() double
+        +serviceTime() double
+        +systemTime() double
+    }
+    class OrderIntakeDispatcher {
+        -RoutingQueue buffer
+        -StatsCollector stats
+        +accept(Order o, double now) Order
+    }
+    class RoutingQueue {
+        -int capacity
+        -List~Order~ slots
+        +isFull() bool
+        +isEmpty() bool
+        +size() int
+        +put(Order o) int
+        +removeLast() Order
+        +removeAt(int index) Order
+        +snapshot() List~Order~
+    }
+    class OrderSelectionDispatcher {
+        -RoutingQueue buffer
+        -List~DistributionCenter~ centers
+        -int ringPointer
+        -StatsCollector stats
+        +dispatch(double now) List~DistributionCenter~
+        -pickBestIndex(List~Order~ orders) int
+        -findFreeCenter() DistributionCenter
+    }
+    class DistributionCenter {
+        -int id
+        -double mu
+        -Order current
+        -double busyTime
+        -Random rng
+        -StatsCollector stats
+        +isFree() bool
+        +start(Order o, double now) double
+        +finish(double now) Order
+        +nextServiceTime() double
+    }
+    class StatsCollector {
+        -int generated
+        -int rejected
+        -int served
+        -double sumSystemTime
+        -double sumWait
+        +onArrival(Order o)
+        +onReject(Order o)
+        +onServiceStart(Order o, DistributionCenter c)
+        +onServiceEnd(Order o, DistributionCenter c)
+        +buildReport() ReportTable
+    }
+    class StepView {
+        +render(SimulationEngine state)
+    }
+    class ReportView {
+        +show(ReportTable t)
+    }
+
+    SimulationEngine --> EventCalendar : calendar
+    SimulationEngine --> "1..3" Source : sources
+    SimulationEngine --> OrderIntakeDispatcher : intake
+    SimulationEngine --> OrderSelectionDispatcher : selection
+    SimulationEngine --> StatsCollector : stats
+    SimulationEngine ..> StepView : ОД2
+    SimulationEngine ..> ReportView : ОР1
+    EventCalendar o-- Event
+    Source ..> Order : создаёт
+    OrderIntakeDispatcher --> RoutingQueue : buffer
+    OrderIntakeDispatcher --> StatsCollector : stats
+    OrderSelectionDispatcher --> RoutingQueue : buffer
+    OrderSelectionDispatcher --> "1..N" DistributionCenter : centers
+    OrderSelectionDispatcher --> StatsCollector : stats
+    RoutingQueue o-- Order : slots
+    DistributionCenter --> Order : current
+    DistributionCenter --> StatsCollector : stats

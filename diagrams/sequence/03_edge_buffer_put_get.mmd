@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant DP as Диспетчер постановки
+    participant BUF as Очередь маршрутизации<br/>(емкость 3)
+    participant DV as Диспетчер выбора
+
+    Note over BUF: Состояние: []
+    DP->>BUF: put(№1, И2)
+    Note over DP,BUF: Д1ОЗ2 - первое место от начала,<br/>новый заказ всегда в конец
+    BUF-->>DP: позиция 1
+    DP->>BUF: put(№2, И1)
+    BUF-->>DP: позиция 2
+    DP->>BUF: put(№3, И2)
+    BUF-->>DP: позиция 3
+    Note over BUF: Состояние: [№1 (И2), №2 (И1), №3 (И2)]
+
+    DV->>BUF: snapshot()
+    BUF-->>DV: [№1, №2, №3]
+    Note over DV: Д2Б4 - выше приоритет у И1 (меньший номер).<br/>Лучший заказ - №2
+    DV->>BUF: removeAt(2)
+    BUF-->>DV: заказ №2
+    Note over BUF: Сдвиг вперёд (Д1ОЗ2): [№1, №3]
+
+    DV->>BUF: snapshot()
+    BUF-->>DV: [№1, №3]
+    Note over DV: Оба заказа от И2 - приоритет равный,<br/>берём того, кто ждёт дольше: №1
+    DV->>BUF: removeAt(1)
+    BUF-->>DV: заказ №1
+    Note over BUF: Сдвиг вперёд: [№3]

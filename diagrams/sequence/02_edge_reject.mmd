@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    participant DP as Диспетчер постановки
+    participant BUF as Очередь маршрутизации<br/>(емкость 3)
+    participant ST as Статистика
+
+    Note over BUF: Состояние: [№4 (И2), №5 (И1), №6 (И2)] - очередь полна,<br/>все центры заняты
+    DP->>BUF: isFull()
+    BUF-->>DP: true
+    Note over DP,BUF: Д1ОО4 - вытесняется заказ, поставленный последним.<br/>Приоритет источника не учитывается
+    DP->>BUF: removeLast()
+    BUF-->>DP: заказ №6
+    DP->>ST: onReject(№6)
+    Note over ST: отказ засчитан вытесненному №6,<br/>а не новому №7
+    DP->>BUF: put(№7)
+    BUF-->>DP: позиция 3
+    Note over BUF: Состояние: [№4, №5, №7]
